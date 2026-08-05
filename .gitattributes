@@ -1,0 +1,23 @@
+# ============================================================
+#   Git Attributes — Force binary handling for Office files
+# ============================================================
+
+# Excel files — treat as binary (never modify line endings)
+*.xlsx    binary
+*.xls     binary
+*.xlsm    binary
+*.xlsb    binary
+
+# Word files
+*.docx    binary
+*.doc     binary
+
+# PowerPoint files
+*.pptx    binary
+*.ppt     binary
+
+# PDF files
+*.pdf     binary
+
+# ZIP files
+*.zip     binary
