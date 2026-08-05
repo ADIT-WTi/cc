@@ -1,0 +1,13 @@
+# Exclude large files
+Combined_Invoice_*.xlsx
+Sample_Invoice_*.xlsx
+downloads/
+
+# Keep these in git
+!combined_data_*.parquet
+!CRD_Business_Report_*.xlsx
+!Final_Sample_Invoice_*.xlsx
+!Not_Found_Summary.xlsx
+!not_found_data.json
+!.run_state.json
+!.current_run_dir.txt
