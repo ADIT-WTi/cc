@@ -23,11 +23,11 @@ from googleapiclient.http import MediaFileUpload
 
 SHEET_CONFIG = {
     2025: {
-        "spreadsheet_id": "1nm1FpvvzjK8xDfKHDc4FEAC6_9vMhJA29Ydbwmok7-U",
+        "spreadsheet_id": "1YdEHvdbNM59cpmF_hOHS9jveQa3y-wgqZTNqkiETfHM",
         "sheet_name"    : "INVOICE 2025"
     },
     2026: {
-        "spreadsheet_id": "1FTJArFlFzvz33_oiGACldkKbsWoJv4k_IlR4MVT70p8",
+        "spreadsheet_id": "1uRCN5pGGJS1r7HLeu3V-viD8dCrR5GYVS05LO-kRNIg",
         "sheet_name"    : "INVOICE 2026"
     },
     # 2027: {
