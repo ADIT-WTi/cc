@@ -1,0 +1,21 @@
+{
+    "output_dir": "reports/2026/August",
+    "has_not_found": true,
+    "not_found_summary_path": "reports/2026/August/Not_Found_Summary.xlsx",
+    "not_found_json_path": "reports/2026/August/not_found_data.json",
+    "combined_file_path": "reports/2026/August/Combined_Invoice_05082026_1228.xlsx",
+    "parquet_file_path": "reports/2026/August/combined_data_05082026_1228.parquet",
+    "sample_invoice_path": "reports/2026/August/Sample_Invoice_05082026_1228.xlsx",
+    "run_date": "05-Aug-2026",
+    "start_month": "APR-2025",
+    "end_month": "JUL-2026",
+    "final_report_path": "/home/runner/work/cc/cc/reports/2026/August/CRD_Business_Report_20260805_124952.xlsx",
+    "email2_sent": false,
+    "master_updated": false,
+    "master_update_time": "",
+    "rows_added_to_master": 0,
+    "email1_sent": true,
+    "total_entities": 1784,
+    "total_bookings": 455007,
+    "total_revenue_lakhs": 18481.12
+}
