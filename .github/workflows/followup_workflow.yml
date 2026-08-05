@@ -1,0 +1,326 @@
+# ============================================================
+#         FOLLOWUP WORKFLOW — EMAIL 2
+# ============================================================
+# Trigger 1: Push to data/Not_Found_Summary.xlsx (auto)
+# Trigger 2: Manual from GitHub Actions UI (testing)
+#
+# Steps:
+#   1. Checkout repository
+#   2. Setup Python + dependencies
+#   3. Check if Email 2 is needed
+#   4. Update master file from Not Found Summary
+#   5. Reprocess invoice data with updated master
+#   6. Generate fresh CRD report (no Not Found sheet)
+#   7. Send Email 2
+#   8. Commit all files
+# ============================================================
+
+name: CRD Report — Followup Workflow (Email 2)
+
+on:
+  push:
+    paths:
+      - "data/Not_Found_Summary.xlsx"
+
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: |
+          TEST MODE
+          true  = Manual test run
+          false = Production run
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  send-final-report:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+
+      # ── Step 1: Checkout Repository ──────────────────────
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      # ── Step 2: Setup Python ──────────────────────────────
+      - name: 🐍 Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # ── Step 3: Install Dependencies ──────────────────────
+      - name: 📦 Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ── Step 4: Check If Email 2 Is Needed ────────────────
+      - name: 🔍 Check State File
+        id: check_state
+        run: |
+          python - <<'EOF'
+          import json, os, sys
+
+          state_path = "reports/.run_state.json"
+          event_name = os.environ.get(
+              "GITHUB_EVENT_NAME", ""
+          )
+          print(f"Event type : {event_name}")
+
+          # Manual trigger — always run
+          if event_name == "workflow_dispatch":
+              print(
+                  "✅ Manual trigger — "
+                  "forcing Email 2 flow."
+              )
+              with open(
+                  os.environ["GITHUB_OUTPUT"], "a"
+              ) as f:
+                  f.write("needs_email2=true\n")
+              sys.exit(0)
+
+          # Auto trigger — check state
+          if not os.path.exists(state_path):
+              print("No state file. Skipping.")
+              with open(
+                  os.environ["GITHUB_OUTPUT"], "a"
+              ) as f:
+                  f.write("needs_email2=false\n")
+              sys.exit(0)
+
+          with open(state_path) as f:
+              state = json.load(f)
+
+          has_not_found = state.get("has_not_found", False)
+          email2_sent   = state.get("email2_sent",   False)
+          nf_exists     = os.path.exists(
+              "data/Not_Found_Summary.xlsx"
+          )
+
+          print(f"has_not_found  : {has_not_found}")
+          print(f"email2_sent    : {email2_sent}")
+          print(f"NF file exists : {nf_exists}")
+
+          if has_not_found and not email2_sent and nf_exists:
+              print("✅ Email 2 required.")
+              with open(
+                  os.environ["GITHUB_OUTPUT"], "a"
+              ) as f:
+                  f.write("needs_email2=true\n")
+          else:
+              print("ℹ️  Email 2 not required.")
+              with open(
+                  os.environ["GITHUB_OUTPUT"], "a"
+              ) as f:
+                  f.write("needs_email2=false\n")
+          EOF
+
+      # ── Step 5: Update Master File ────────────────────────
+      - name: 🔄 Update Master from Not Found Summary
+        if: steps.check_state.outputs.needs_email2 == 'true'
+        run: |
+          echo "============================================"
+          echo "  STEP 1: UPDATING MASTER FILE"
+          echo "============================================"
+          python scripts/update_master.py
+
+      # ── Step 6: Reprocess Invoice Data ────────────────────
+      # Uses committed combined file — no downloads needed
+      - name: ⚙️ Reprocess Combined Invoice
+        if: steps.check_state.outputs.needs_email2 == 'true'
+        run: |
+          echo "============================================"
+          echo "  STEP 2: REPROCESSING COMBINED INVOICE"
+          echo "  Using committed combined invoice file"
+          echo "  No raw downloads needed"
+          echo "============================================"
+          python scripts/reprocess_combined.py
+
+      # ── Step 7: Generate Fresh CRD Report ─────────────────
+      - name: 📈 Generate Final CRD Business Report
+        if: steps.check_state.outputs.needs_email2 == 'true'
+        run: |
+          echo "============================================"
+          echo "  STEP 3: GENERATING FINAL CRD REPORT"
+          echo "  No Not Found sheet — all entities mapped"
+          echo "============================================"
+          python scripts/generate_report.py
+
+      # ── Step 8: Send Email 2 ──────────────────────────────
+      - name: 📧 Send Final Email 2
+        if: steps.check_state.outputs.needs_email2 == 'true'
+        env:
+          GMAIL_SENDER        : ${{ secrets.GMAIL_SENDER }}
+          GMAIL_APP_PASSWORD  : ${{ secrets.GMAIL_APP_PASSWORD }}
+          RECIPIENT_EMAILS    : ${{ secrets.RECIPIENT_EMAILS }}
+          CC_EMAILS           : ${{ secrets.CC_EMAILS }}
+          GITHUB_EVENT_NAME   : ${{ github.event_name }}
+        run: |
+          echo "============================================"
+          echo "  STEP 4: SENDING FINAL EMAIL 2"
+          echo "============================================"
+          python scripts/email_sender.py email2
+
+      
+
+      # ── Step 9: Commit All Updates ────────────────────────
+      - name: 💾 Commit Updated Files to Repository
+        if: steps.check_state.outputs.needs_email2 == 'true'
+        run: |
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email \
+            "github-actions[bot]@users.noreply.github.com"
+
+          git add reports/.run_state.json
+          git add reports/.current_run_dir.txt
+          git add data/
+
+          find reports/ -name "CRD_Business_Report_*.xlsx" \
+            | xargs -I{} git add {} 2>/dev/null || true
+          find reports/ -name "Final_Sample_Invoice_*.xlsx" \
+            | xargs -I{} git add {} 2>/dev/null || true
+
+          if git diff --staged --quiet; then
+            echo "✅ No changes to commit."
+            exit 0
+          fi
+
+          git stash
+          git pull origin HEAD --rebase
+          git stash pop
+
+          git add reports/.run_state.json
+          git add reports/.current_run_dir.txt
+          git add data/
+          find reports/ -name "CRD_Business_Report_*.xlsx" \
+            | xargs -I{} git add {} 2>/dev/null || true
+          find reports/ -name "Final_Sample_Invoice_*.xlsx" \
+            | xargs -I{} git add {} 2>/dev/null || true
+
+          if git diff --staged --quiet; then
+            echo "✅ No changes after restore."
+            exit 0
+          fi
+
+          RUN_DATE=$(date +'%d-%b-%Y %H:%M IST')
+          git commit -m \
+            "✅ CRD Final Report + Sheets Push — ${RUN_DATE}"
+          git push origin HEAD
+          echo "✅ Committed and pushed."
+
+      # ── Step 10: Upload Artifacts ─────────────────────────
+      - name: 📤 Upload Final Report Artifact
+        if: steps.check_state.outputs.needs_email2 == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CRD-Final-Report-${{ github.run_number }}
+          path: |
+            reports/**/*.xlsx
+            reports/.run_state.json
+          retention-days: 30
+
+      # ── Step 9: Commit All Updates ────────────────────────
+      - name: 💾 Commit Updated Files
+        if: steps.check_state.outputs.needs_email2 == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email \
+            "github-actions[bot]@users.noreply.github.com"
+
+          git add reports/.run_state.json        || true
+          git add reports/.current_run_dir.txt   || true
+          git add data/                          || true
+
+          find reports/ -name "combined_data_*.parquet" \
+            -exec git add {} \; 2>/dev/null || true
+          find reports/ -name "CRD_Business_Report_*.xlsx" \
+            -exec git add {} \; 2>/dev/null || true
+          find reports/ -name "Final_Sample_Invoice_*.xlsx" \
+            -exec git add {} \; 2>/dev/null || true
+
+          if git diff --staged --quiet; then
+            echo "✅ No changes to commit."
+            exit 0
+          fi
+
+          git stash
+          git pull origin HEAD --rebase
+          git stash pop || true
+
+          git add reports/.run_state.json        || true
+          git add reports/.current_run_dir.txt   || true
+          git add data/                          || true
+          find reports/ -name "combined_data_*.parquet" \
+            -exec git add {} \; 2>/dev/null || true
+          find reports/ -name "CRD_Business_Report_*.xlsx" \
+            -exec git add {} \; 2>/dev/null || true
+          find reports/ -name "Final_Sample_Invoice_*.xlsx" \
+            -exec git add {} \; 2>/dev/null || true
+
+          if git diff --staged --quiet; then
+            echo "✅ No changes after restore."
+            exit 0
+          fi
+
+          RUN_DATE=$(date +'%d-%b-%Y %H:%M IST')
+          git commit -m \
+            "✅ CRD Final Report + Sheets Push — ${RUN_DATE}"
+          git push origin HEAD
+          echo "✅ Committed and pushed."
+
+      # ── Step 10: Upload Artifacts ─────────────────────────
+      - name: 📤 Upload Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: >-
+            CRD-Final-Report-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            reports/**/*.xlsx
+            !reports/**/Combined_Invoice_*.xlsx
+            !reports/**/Sample_Invoice_*.xlsx
+            !reports/**/downloads/**
+            reports/.run_state.json
+          retention-days: 30
+
+       # NEW - Auto Cleanup
+      - name: 🧹 Delete Old Artifacts
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            for (const artifact of data.artifacts) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+              console.log(`Deleted: ${artifact.name}`);
+            }
+      # ── Step 11: Skip Notice ──────────────────────────────
+      - name: ℹ️ Skip Notice
+        if: steps.check_state.outputs.needs_email2 == 'false'
+        run: |
+          echo "============================================"
+          echo "  ℹ️  EMAIL 2 NOT REQUIRED"
+          echo "  Reasons:"
+          echo "  • No Not Found entities OR"
+          echo "  • Email 2 already sent OR"
+          echo "  • Not_Found_Summary.xlsx not in data/"
+          echo "============================================"
