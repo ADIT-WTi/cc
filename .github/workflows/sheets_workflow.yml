@@ -1,0 +1,263 @@
+name: CRD Report — Sheets & Drive Push
+
+on:
+  workflow_run:
+    workflows:
+      - "CRD Report — Main Workflow (Email 1)"
+    types:
+      - completed
+
+  workflow_dispatch:
+
+jobs:
+  push-to-sheets-and-drive:
+    runs-on: ubuntu-latest
+
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    permissions:
+      contents: write
+
+    steps:
+
+      # ── Step 1: Checkout ──────────────────────────────────
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      # ── Step 2: Python Setup ──────────────────────────────
+      - name: 🐍 Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # ── Step 3: Install Dependencies ──────────────────────
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ── Step 4: Check State ───────────────────────────────
+      - name: 🔍 Check State File
+        id: check_state
+        run: |
+          python - <<'EOF'
+          import json, os, sys
+
+          state_path = "reports/.run_state.json"
+          event_name = os.environ.get(
+              "GITHUB_EVENT_NAME", ""
+          )
+          print(f"Event : {event_name}")
+
+          if event_name == "workflow_dispatch":
+              print("✅ Manual — forcing push.")
+              with open(
+                  os.environ["GITHUB_OUTPUT"], "a"
+              ) as f:
+                  f.write("needs_push=true\n")
+              sys.exit(0)
+
+          if not os.path.exists(state_path):
+              print("No state file.")
+              with open(
+                  os.environ["GITHUB_OUTPUT"], "a"
+              ) as f:
+                  f.write("needs_push=false\n")
+              sys.exit(0)
+
+          with open(state_path) as f:
+              state = json.load(f)
+
+          has_not_found = state.get("has_not_found", False)
+          sheets_pushed = state.get("sheets_pushed", False)
+          email1_sent   = state.get("email1_sent",   False)
+
+          print(f"has_not_found : {has_not_found}")
+          print(f"sheets_pushed : {sheets_pushed}")
+          print(f"email1_sent   : {email1_sent}")
+
+          if email1_sent and \
+             not has_not_found and \
+             not sheets_pushed:
+              print("✅ Push required.")
+              with open(
+                  os.environ["GITHUB_OUTPUT"], "a"
+              ) as f:
+                  f.write("needs_push=true\n")
+          else:
+              print("ℹ️  Push not required.")
+              with open(
+                  os.environ["GITHUB_OUTPUT"], "a"
+              ) as f:
+                  f.write("needs_push=false\n")
+          EOF
+
+      # ── Step 5: Push to Google Sheets ─────────────────────
+      - name: 📊 Push to Google Sheets
+        if: steps.check_state.outputs.needs_push == 'true'
+        timeout-minutes: 60
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "============================================"
+          echo "  PUSHING TO GOOGLE SHEETS"
+          echo "============================================"
+          python scripts/push_to_sheets.py
+
+      # ── Step 6: Upload Parquet as Artifact ────────────────
+      - name: 📦 Upload Parquet as Artifact
+        if: steps.check_state.outputs.needs_push == 'true'
+        id: upload_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: >-
+            Invoice-Data-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            reports/**/*.parquet
+          retention-days: 1
+
+      # NEW - Auto Cleanup
+      - name: 🧹 Delete Old Artifacts
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            for (const artifact of data.artifacts) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+              console.log(`Deleted: ${artifact.name}`);
+            }
+
+      # ── Step 7: Save Artifact Link to README ─────────────
+      - name: 📝 Save Artifact Link to README
+        if: steps.check_state.outputs.needs_push == 'true'
+        env:
+          ARTIFACT_URL: ${{ steps.upload_artifact.outputs.artifact-url }}
+        run: |
+          python - <<'EOF'
+          import os
+          from datetime import datetime
+
+          repo_root    = os.getcwd()
+          readme_path  = os.path.join(repo_root, "README.md")
+          artifact_url = os.environ.get("ARTIFACT_URL", "")
+          now          = datetime.now()
+          timestamp    = now.strftime("%d-%b-%Y %H:%M IST")
+          date_str     = now.strftime("%d-%b-%Y")
+
+          # Build new entry
+          new_entry = (
+              f"| {timestamp} | "
+              f"[Download]({artifact_url}) | "
+              f"90 days |"
+          )
+
+          # Check if README exists
+          if os.path.exists(readme_path):
+              with open(readme_path, "r") as f:
+                  content = f.read()
+          else:
+              content = ""
+
+          # Check if download table exists
+          TABLE_HEADER = "## 📦 Invoice Data Downloads"
+          TABLE_COLUMNS = (
+              "| Date & Time | Download Link | "
+              "Expires |\n"
+              "|---|---|---|"
+          )
+
+          if TABLE_HEADER not in content:
+              # Add table at the end of README
+              content += (
+                  f"\n\n---\n\n"
+                  f"{TABLE_HEADER}\n\n"
+                  f"{TABLE_COLUMNS}\n"
+                  f"{new_entry}\n"
+              )
+          else:
+              # Insert new entry after table header row
+              # Find the table columns line
+              lines = content.split("\n")
+              new_lines = []
+              inserted = False
+
+              for i, line in enumerate(lines):
+                  new_lines.append(line)
+                  # Insert after |---|---|---| line
+                  if not inserted and \
+                     line.strip().startswith("|---"):
+                      # Check if previous line has
+                      # "Download Link"
+                      if i > 0 and \
+                         "Download Link" in lines[i-1]:
+                          new_lines.append(new_entry)
+                          inserted = True
+
+              if not inserted:
+                  # Fallback — append at end
+                  new_lines.append(new_entry)
+
+              content = "\n".join(new_lines)
+
+          # Write updated README
+          with open(readme_path, "w") as f:
+              f.write(content)
+
+          print(f"✅ Artifact link saved to README.md")
+          print(f"   Date : {timestamp}")
+          print(f"   URL  : {artifact_url}")
+          EOF
+
+      # ── Step 8: Commit State + README ─────────────────────
+      - name: 💾 Commit State + README
+        if: steps.check_state.outputs.needs_push == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email \
+            "github-actions[bot]@users.noreply.github.com"
+
+          git add reports/.run_state.json || true
+          git add README.md || true
+
+          if git diff --staged --quiet; then
+            echo "✅ No changes."
+            exit 0
+          fi
+
+          git stash
+          git pull origin HEAD --rebase
+          git stash pop || true
+
+          git add reports/.run_state.json || true
+          git add README.md || true
+
+          if git diff --staged --quiet; then
+            echo "✅ No changes after restore."
+            exit 0
+          fi
+
+          RUN_DATE=$(date +'%d-%b-%Y %H:%M IST')
+          git commit -m "📊 Sheets Push + README — ${RUN_DATE}"
+          git push origin HEAD
+          echo "✅ Committed."
+
+      # ── Step 9: Skip Notice ───────────────────────────────
+      - name: ℹ️ Skip Notice
+        if: steps.check_state.outputs.needs_push == 'false'
+        run: |
+          echo "ℹ️  Sheets push not required."
