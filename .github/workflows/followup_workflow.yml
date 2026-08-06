@@ -175,62 +175,7 @@ jobs:
 
       
 
-      # ── Step 9: Commit All Updates ────────────────────────
-      - name: 💾 Commit Updated Files to Repository
-        if: steps.check_state.outputs.needs_email2 == 'true'
-        run: |
-          git config --global user.name  "github-actions[bot]"
-          git config --global user.email \
-            "github-actions[bot]@users.noreply.github.com"
-
-          git add reports/.run_state.json
-          git add reports/.current_run_dir.txt
-          git add data/
-
-          find reports/ -name "CRD_Business_Report_*.xlsx" \
-            | xargs -I{} git add {} 2>/dev/null || true
-          find reports/ -name "Final_Sample_Invoice_*.xlsx" \
-            | xargs -I{} git add {} 2>/dev/null || true
-
-          if git diff --staged --quiet; then
-            echo "✅ No changes to commit."
-            exit 0
-          fi
-
-          git stash
-          git pull origin HEAD --rebase
-          git stash pop
-
-          git add reports/.run_state.json
-          git add reports/.current_run_dir.txt
-          git add data/
-          find reports/ -name "CRD_Business_Report_*.xlsx" \
-            | xargs -I{} git add {} 2>/dev/null || true
-          find reports/ -name "Final_Sample_Invoice_*.xlsx" \
-            | xargs -I{} git add {} 2>/dev/null || true
-
-          if git diff --staged --quiet; then
-            echo "✅ No changes after restore."
-            exit 0
-          fi
-
-          RUN_DATE=$(date +'%d-%b-%Y %H:%M IST')
-          git commit -m \
-            "✅ CRD Final Report + Sheets Push — ${RUN_DATE}"
-          git push origin HEAD
-          echo "✅ Committed and pushed."
-
-      # ── Step 10: Upload Artifacts ─────────────────────────
-      - name: 📤 Upload Final Report Artifact
-        if: steps.check_state.outputs.needs_email2 == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: CRD-Final-Report-${{ github.run_number }}
-          path: |
-            reports/**/*.xlsx
-            reports/.run_state.json
-          retention-days: 30
-
+      
       # ── Step 9: Commit All Updates ────────────────────────
       - name: 💾 Commit Updated Files
         if: steps.check_state.outputs.needs_email2 == 'true'
