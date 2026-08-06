@@ -205,8 +205,8 @@
     "Group Hub": "Tier 2/3",
     "Group Entity": "",
     "Vertical": "",
-    "Bookings Count": "38",
-    "Revenue": "3813034"
+    "Bookings Count": "42",
+    "Revenue": "4251734"
   },
   {
     "Month": "APR-2026",
@@ -216,8 +216,8 @@
     "Group Hub": "Tier 2/3",
     "Group Entity": "",
     "Vertical": "",
-    "Bookings Count": "9",
-    "Revenue": "735485"
+    "Bookings Count": "15",
+    "Revenue": "1395675"
   },
   {
     "Month": "APR-2026",
@@ -262,6 +262,17 @@
     "Vertical": "",
     "Bookings Count": "3",
     "Revenue": "260727"
+  },
+  {
+    "Month": "APR-2026",
+    "CorporateID": "5200",
+    "Corporate": "ADANI GREEN ENERGY LIMITED-LTR",
+    "Hub": "Jaisalmer",
+    "Group Hub": "Tier 2/3",
+    "Group Entity": "",
+    "Vertical": "",
+    "Bookings Count": "2",
+    "Revenue": "221490"
   },
   {
     "Month": "APR-2026",
@@ -320,17 +331,6 @@
   },
   {
     "Month": "APR-2026",
-    "CorporateID": "5130",
-    "Corporate": "Payu Digital Labs Private Limited",
-    "Hub": "Mumbai Hub",
-    "Group Hub": "Mumbai",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "4",
-    "Revenue": "8654"
-  },
-  {
-    "Month": "APR-2026",
     "CorporateID": "5199",
     "Corporate": "Adani New Industries Ltd- Mgf (Radhanpur)",
     "Hub": "Ahmedabad Hub1",
@@ -339,17 +339,6 @@
     "Vertical": "",
     "Bookings Count": "1",
     "Revenue": "7951"
-  },
-  {
-    "Month": "APR-2026",
-    "CorporateID": "5130",
-    "Corporate": "Payu Digital Labs Private Limited",
-    "Hub": "BLR Hub",
-    "Group Hub": "Bengaluru",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "2",
-    "Revenue": "3091"
   },
   {
     "Month": "MAY-2026",
@@ -427,17 +416,6 @@
     "Vertical": "",
     "Bookings Count": "3",
     "Revenue": "263151"
-  },
-  {
-    "Month": "MAY-2026",
-    "CorporateID": "5079",
-    "Corporate": "Enrecover Technologies Private Limited",
-    "Hub": "Chennai Hub",
-    "Group Hub": "Chennai",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "248949"
   },
   {
     "Month": "MAY-2026",
@@ -551,39 +529,6 @@
   },
   {
     "Month": "MAY-2026",
-    "CorporateID": "1450",
-    "Corporate": "GMR Airport Developers Limited",
-    "Hub": "New Delhi",
-    "Group Hub": "Delhi NCR",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "42690"
-  },
-  {
-    "Month": "MAY-2026",
-    "CorporateID": "5130",
-    "Corporate": "Payu Digital Labs Private Limited",
-    "Hub": "BLR Hub",
-    "Group Hub": "Bengaluru",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "7",
-    "Revenue": "20125"
-  },
-  {
-    "Month": "MAY-2026",
-    "CorporateID": "5128",
-    "Corporate": "UK&CO LLP",
-    "Hub": "Mumbai Hub",
-    "Group Hub": "Mumbai",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "2",
-    "Revenue": "11019"
-  },
-  {
-    "Month": "MAY-2026",
     "CorporateID": "3151",
     "Corporate": "Tata Consultancy Services Ltd. - ETS (996412)",
     "Hub": "Lucknow",
@@ -595,28 +540,6 @@
   },
   {
     "Month": "MAY-2026",
-    "CorporateID": "5130",
-    "Corporate": "Payu Digital Labs Private Limited",
-    "Hub": "Mumbai Hub",
-    "Group Hub": "Mumbai",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "3",
-    "Revenue": "7590"
-  },
-  {
-    "Month": "MAY-2026",
-    "CorporateID": "5130",
-    "Corporate": "Payu Digital Labs Private Limited",
-    "Hub": "Gurugram",
-    "Group Hub": "Delhi NCR",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "3",
-    "Revenue": "7265"
-  },
-  {
-    "Month": "MAY-2026",
     "CorporateID": "5199",
     "Corporate": "Adani New Industries Ltd- Mgf (Radhanpur)",
     "Hub": "Ahmedabad Hub1",
@@ -625,28 +548,6 @@
     "Vertical": "",
     "Bookings Count": "1",
     "Revenue": "7083"
-  },
-  {
-    "Month": "MAY-2026",
-    "CorporateID": "5121",
-    "Corporate": "Aionos India Private Limited",
-    "Hub": "Mumbai Hub",
-    "Group Hub": "Mumbai",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "6677"
-  },
-  {
-    "Month": "MAY-2026",
-    "CorporateID": "5135",
-    "Corporate": "Reliance Consumer Products Limited - Jharkhand",
-    "Hub": "Darbhanga",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "5745"
   },
   {
     "Month": "JUN-2026",
@@ -705,14 +606,14 @@
   },
   {
     "Month": "JUN-2026",
-    "CorporateID": "5131",
-    "Corporate": "Tejal C/o Pernod Ricard India Private Limited",
-    "Hub": "Mumbai Hub",
-    "Group Hub": "Mumbai",
+    "CorporateID": "3535",
+    "Corporate": "Vantiva India Private Limited - ETS (996412)",
+    "Hub": "BLR Hub",
+    "Group Hub": "Bengaluru",
     "Group Entity": "",
     "Vertical": "",
-    "Bookings Count": "75",
-    "Revenue": "319967"
+    "Bookings Count": "1",
+    "Revenue": "320080"
   },
   {
     "Month": "JUN-2026",
@@ -793,6 +694,17 @@
   },
   {
     "Month": "JUN-2026",
+    "CorporateID": "2489",
+    "Corporate": "BP Business Solutions India Private Ltd- SEZ",
+    "Hub": "Indore Hub",
+    "Group Hub": "Tier 2/3",
+    "Group Entity": "",
+    "Vertical": "",
+    "Bookings Count": "18",
+    "Revenue": "73450"
+  },
+  {
+    "Month": "JUN-2026",
     "CorporateID": "5137",
     "Corporate": "Aspire Systems India Pvt Ltd - ETS (996412)",
     "Hub": "Chennai Hub",
@@ -826,17 +738,6 @@
   },
   {
     "Month": "JUN-2026",
-    "CorporateID": "5149",
-    "Corporate": "BirlaNu Limited - ISD",
-    "Hub": "Hyderabad Hub",
-    "Group Hub": "Hyderabad",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "55154"
-  },
-  {
-    "Month": "JUN-2026",
     "CorporateID": "5002",
     "Corporate": "Adani New Industries Ltd-Mgf-Solar",
     "Hub": "Ahmedabad Hub1",
@@ -845,17 +746,6 @@
     "Vertical": "",
     "Bookings Count": "1",
     "Revenue": "40856"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5089",
-    "Corporate": "Bharti Overseas Pvt Ltd",
-    "Hub": "Pune Hub 1",
-    "Group Hub": "Pune",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "2",
-    "Revenue": "38257"
   },
   {
     "Month": "JUN-2026",
@@ -870,28 +760,6 @@
   },
   {
     "Month": "JUN-2026",
-    "CorporateID": "5121",
-    "Corporate": "Aionos India Private Limited",
-    "Hub": "Hyderabad Hub",
-    "Group Hub": "Hyderabad",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "4",
-    "Revenue": "26630"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "3095",
-    "Corporate": "Balmer Lawrie And Company Limited",
-    "Hub": "Deoghar",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "8",
-    "Revenue": "20100"
-  },
-  {
-    "Month": "JUN-2026",
     "CorporateID": "3151",
     "Corporate": "Tata Consultancy Services Ltd. - ETS (996412)",
     "Hub": "Lucknow",
@@ -900,28 +768,6 @@
     "Vertical": "",
     "Bookings Count": "1",
     "Revenue": "19097"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5089",
-    "Corporate": "Bharti Overseas Pvt Ltd",
-    "Hub": "Chandigarh hub",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "5",
-    "Revenue": "18341"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5098",
-    "Corporate": "Omya Specialty Materials India Private Limited",
-    "Hub": "Jaipur hub",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "3",
-    "Revenue": "17295"
   },
   {
     "Month": "JUN-2026",
@@ -936,17 +782,6 @@
   },
   {
     "Month": "JUN-2026",
-    "CorporateID": "5134",
-    "Corporate": "Reliance Consumer Products Limited - Assam",
-    "Hub": "New Delhi",
-    "Group Hub": "Delhi NCR",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "11115"
-  },
-  {
-    "Month": "JUN-2026",
     "CorporateID": "5193",
     "Corporate": "HDFC Capital development of real estate affordable & Midincome fund 2",
     "Hub": "Hyderabad Hub",
@@ -955,61 +790,6 @@
     "Vertical": "",
     "Bookings Count": "1",
     "Revenue": "9952"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5098",
-    "Corporate": "Omya Specialty Materials India Private Limited",
-    "Hub": "Coimbatore",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "2",
-    "Revenue": "9120"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5121",
-    "Corporate": "Aionos India Private Limited",
-    "Hub": "Mumbai Hub",
-    "Group Hub": "Mumbai",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "8586"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "4773",
-    "Corporate": "Altanova Bioenergies Private Limited",
-    "Hub": "BLR Hub",
-    "Group Hub": "Bengaluru",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "8360"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5096",
-    "Corporate": "Altigreen Propulsion Labs Pvt. Ltd.",
-    "Hub": "BLR Hub",
-    "Group Hub": "Bengaluru",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "8360"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5098",
-    "Corporate": "Omya Specialty Materials India Private Limited",
-    "Hub": "Bharuch",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "7735"
   },
   {
     "Month": "JUN-2026",
@@ -1024,72 +804,6 @@
   },
   {
     "Month": "JUN-2026",
-    "CorporateID": "5130",
-    "Corporate": "Payu Digital Labs Private Limited",
-    "Hub": "BLR Hub",
-    "Group Hub": "Bengaluru",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "2",
-    "Revenue": "6985"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5098",
-    "Corporate": "Omya Specialty Materials India Private Limited",
-    "Hub": "Jamshedpur",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "6860"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5098",
-    "Corporate": "Omya Specialty Materials India Private Limited",
-    "Hub": "Vapi",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "3984"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5128",
-    "Corporate": "UK&CO LLP",
-    "Hub": "Gurugram",
-    "Group Hub": "Delhi NCR",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "3499"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5098",
-    "Corporate": "Omya Specialty Materials India Private Limited",
-    "Hub": "Ranchi",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "2886"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5142",
-    "Corporate": "Tata Consultancy Services Limited - SEZ - Uttar Pradesh",
-    "Hub": "Indore Hub",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "2",
-    "Revenue": "1965"
-  },
-  {
-    "Month": "JUN-2026",
     "CorporateID": "5022",
     "Corporate": "Vishnu C/o Pernod Ricard India Private Limited",
     "Hub": "New Delhi",
@@ -1098,28 +812,6 @@
     "Vertical": "",
     "Bookings Count": "1",
     "Revenue": "1780"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5130",
-    "Corporate": "Payu Digital Labs Private Limited",
-    "Hub": "Mumbai Hub",
-    "Group Hub": "Mumbai",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "1650"
-  },
-  {
-    "Month": "JUN-2026",
-    "CorporateID": "5141",
-    "Corporate": "Tata Consultancy Services Limited - SEZ - Kerala",
-    "Hub": "Indore Hub",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "1015"
   },
   {
     "Month": "JUL-2026",
@@ -1153,6 +845,17 @@
     "Vertical": "",
     "Bookings Count": "13",
     "Revenue": "1194000"
+  },
+  {
+    "Month": "JUL-2026",
+    "CorporateID": "3535",
+    "Corporate": "Vantiva India Private Limited - ETS (996412)",
+    "Hub": "BLR Hub",
+    "Group Hub": "Bengaluru",
+    "Group Entity": "",
+    "Vertical": "",
+    "Bookings Count": "1",
+    "Revenue": "330080"
   },
   {
     "Month": "JUL-2026",
@@ -1200,17 +903,6 @@
   },
   {
     "Month": "JUL-2026",
-    "CorporateID": "5131",
-    "Corporate": "Tejal C/o Pernod Ricard India Private Limited",
-    "Hub": "Mumbai Hub",
-    "Group Hub": "Mumbai",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "54",
-    "Revenue": "238623"
-  },
-  {
-    "Month": "JUL-2026",
     "CorporateID": "5146",
     "Corporate": "Mundra Petrochem Ltd-Foundation",
     "Hub": "Ahmedabad Hub1",
@@ -1252,6 +944,17 @@
     "Vertical": "",
     "Bookings Count": "2",
     "Revenue": "85000"
+  },
+  {
+    "Month": "JUL-2026",
+    "CorporateID": "4522",
+    "Corporate": "IPE Global Centre for Knowledge and Development",
+    "Hub": "Nagpur",
+    "Group Hub": "Tier 2/3",
+    "Group Entity": "",
+    "Vertical": "",
+    "Bookings Count": "1",
+    "Revenue": "83516"
   },
   {
     "Month": "JUL-2026",
@@ -1449,18 +1152,7 @@
     "Group Entity": "",
     "Vertical": "",
     "Bookings Count": "10",
-    "Revenue": "36503"
-  },
-  {
-    "Month": "JUL-2026",
-    "CorporateID": "2532",
-    "Corporate": "John Snow India Pvt Ltd",
-    "Hub": "Ambedkar Nagar",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "13",
-    "Revenue": "35566"
+    "Revenue": "36162"
   },
   {
     "Month": "JUL-2026",
@@ -1472,6 +1164,28 @@
     "Vertical": "",
     "Bookings Count": "1",
     "Revenue": "35540"
+  },
+  {
+    "Month": "JUL-2026",
+    "CorporateID": "2532",
+    "Corporate": "John Snow India Pvt Ltd",
+    "Hub": "Ambedkar Nagar",
+    "Group Hub": "Tier 2/3",
+    "Group Entity": "",
+    "Vertical": "",
+    "Bookings Count": "13",
+    "Revenue": "35322"
+  },
+  {
+    "Month": "JUL-2026",
+    "CorporateID": "2532",
+    "Corporate": "John Snow India Pvt Ltd",
+    "Hub": "Ambikapur",
+    "Group Hub": "Tier 2/3",
+    "Group Entity": "",
+    "Vertical": "",
+    "Bookings Count": "6",
+    "Revenue": "34929"
   },
   {
     "Month": "JUL-2026",
@@ -1904,17 +1618,6 @@
   },
   {
     "Month": "JUL-2026",
-    "CorporateID": "2532",
-    "Corporate": "John Snow India Pvt Ltd",
-    "Hub": "Trichy",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "4",
-    "Revenue": "19617"
-  },
-  {
-    "Month": "JUL-2026",
     "CorporateID": "4891",
     "Corporate": "Samridh Impact Solutions Private Limited",
     "Hub": "Chandigarh hub",
@@ -1956,6 +1659,17 @@
     "Vertical": "",
     "Bookings Count": "2",
     "Revenue": "19383"
+  },
+  {
+    "Month": "JUL-2026",
+    "CorporateID": "2532",
+    "Corporate": "John Snow India Pvt Ltd",
+    "Hub": "Trichy",
+    "Group Hub": "Tier 2/3",
+    "Group Entity": "",
+    "Vertical": "",
+    "Bookings Count": "4",
+    "Revenue": "19247"
   },
   {
     "Month": "JUL-2026",
@@ -2055,6 +1769,17 @@
     "Vertical": "",
     "Bookings Count": "1",
     "Revenue": "17260"
+  },
+  {
+    "Month": "JUL-2026",
+    "CorporateID": "3216",
+    "Corporate": "Azure Power India Private Limited",
+    "Hub": "Goa",
+    "Group Hub": "Tier 2/3",
+    "Group Entity": "",
+    "Vertical": "",
+    "Bookings Count": "2",
+    "Revenue": "17200"
   },
   {
     "Month": "JUL-2026",
@@ -2531,17 +2256,6 @@
   },
   {
     "Month": "JUL-2026",
-    "CorporateID": "4497",
-    "Corporate": "IPE Global Ltd - CRD",
-    "Hub": "Dharamshala",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "9290"
-  },
-  {
-    "Month": "JUL-2026",
     "CorporateID": "5005",
     "Corporate": "IDRS Labs Private Limited",
     "Hub": "Coimbatore",
@@ -2550,6 +2264,17 @@
     "Vertical": "",
     "Bookings Count": "2",
     "Revenue": "9204"
+  },
+  {
+    "Month": "JUL-2026",
+    "CorporateID": "4497",
+    "Corporate": "IPE Global Ltd - CRD",
+    "Hub": "Dharamshala",
+    "Group Hub": "Tier 2/3",
+    "Group Entity": "",
+    "Vertical": "",
+    "Bookings Count": "1",
+    "Revenue": "9200"
   },
   {
     "Month": "JUL-2026",
@@ -2707,8 +2432,8 @@
   },
   {
     "Month": "JUL-2026",
-    "CorporateID": "2687",
-    "Corporate": "ICRA Limited",
+    "CorporateID": "2890",
+    "Corporate": "ICRA Limited - Hyderabad",
     "Hub": "Coimbatore",
     "Group Hub": "Tier 2/3",
     "Group Entity": "",
@@ -2762,17 +2487,6 @@
   },
   {
     "Month": "JUL-2026",
-    "CorporateID": "2687",
-    "Corporate": "ICRA Limited",
-    "Hub": "Surat",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "7605"
-  },
-  {
-    "Month": "JUL-2026",
     "CorporateID": "4781",
     "Corporate": "Edgeverve Systems Limited - (Pune STP)",
     "Hub": "Pune Hub 1",
@@ -2792,17 +2506,6 @@
     "Vertical": "",
     "Bookings Count": "1",
     "Revenue": "7380"
-  },
-  {
-    "Month": "JUL-2026",
-    "CorporateID": "5098",
-    "Corporate": "Omya Specialty Materials India Private Limited",
-    "Hub": "Vapi",
-    "Group Hub": "Tier 2/3",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "2",
-    "Revenue": "7342"
   },
   {
     "Month": "JUL-2026",
@@ -2968,17 +2671,6 @@
     "Vertical": "",
     "Bookings Count": "1",
     "Revenue": "6294"
-  },
-  {
-    "Month": "JUL-2026",
-    "CorporateID": "4938",
-    "Corporate": "Bharti Overseas Private Limited",
-    "Hub": "Mumbai Hub",
-    "Group Hub": "Mumbai",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "6260"
   },
   {
     "Month": "JUL-2026",
@@ -3609,17 +3301,6 @@
   },
   {
     "Month": "JUL-2026",
-    "CorporateID": "4752",
-    "Corporate": "Infosys Limited-(Chennai SEZ)",
-    "Hub": "Noida",
-    "Group Hub": "Delhi NCR",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "3696"
-  },
-  {
-    "Month": "JUL-2026",
     "CorporateID": "1960",
     "Corporate": "LinkedIn Technology Information Private Limited – GGN",
     "Hub": "Tuticorin",
@@ -3749,17 +3430,6 @@
     "Vertical": "",
     "Bookings Count": "1",
     "Revenue": "2965"
-  },
-  {
-    "Month": "JUL-2026",
-    "CorporateID": "5134",
-    "Corporate": "Reliance Consumer Products Limited - Assam",
-    "Hub": "New Delhi",
-    "Group Hub": "Delhi NCR",
-    "Group Entity": "",
-    "Vertical": "",
-    "Bookings Count": "1",
-    "Revenue": "2910"
   },
   {
     "Month": "JUL-2026",
@@ -4126,6 +3796,17 @@
   },
   {
     "Month": "JUL-2026",
+    "CorporateID": "4752",
+    "Corporate": "Infosys Limited-(Chennai SEZ)",
+    "Hub": "Noida",
+    "Group Hub": "Delhi NCR",
+    "Group Entity": "",
+    "Vertical": "",
+    "Bookings Count": "1",
+    "Revenue": "1515"
+  },
+  {
+    "Month": "JUL-2026",
     "CorporateID": "2241",
     "Corporate": "WU Technology Engineering Services Private Limited",
     "Hub": "Pune Hub 1",
@@ -4137,8 +3818,8 @@
   },
   {
     "Month": "JUL-2026",
-    "CorporateID": "4756",
-    "Corporate": "Infosys Limited - (Chandigarh SEZ)",
+    "CorporateID": "4709",
+    "Corporate": "Infosys Limited - (Gurgaon STP)",
     "Hub": "Mumbai Hub",
     "Group Hub": "Mumbai",
     "Group Entity": "",
@@ -4148,8 +3829,8 @@
   },
   {
     "Month": "JUL-2026",
-    "CorporateID": "4709",
-    "Corporate": "Infosys Limited - (Gurgaon STP)",
+    "CorporateID": "4756",
+    "Corporate": "Infosys Limited - (Chandigarh SEZ)",
     "Hub": "Mumbai Hub",
     "Group Hub": "Mumbai",
     "Group Entity": "",
@@ -4192,8 +3873,8 @@
   },
   {
     "Month": "JUL-2026",
-    "CorporateID": "4677",
-    "Corporate": "Infosys Limited - (Bangalore STP)",
+    "CorporateID": "4704",
+    "Corporate": "Infosys Limited - (Bangalore SEZ)",
     "Hub": "Chandigarh hub",
     "Group Hub": "Tier 2/3",
     "Group Entity": "",
@@ -4203,8 +3884,8 @@
   },
   {
     "Month": "JUL-2026",
-    "CorporateID": "4704",
-    "Corporate": "Infosys Limited - (Bangalore SEZ)",
+    "CorporateID": "4677",
+    "Corporate": "Infosys Limited - (Bangalore STP)",
     "Hub": "Chandigarh hub",
     "Group Hub": "Tier 2/3",
     "Group Entity": "",
