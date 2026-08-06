@@ -17,5 +17,12 @@
     "email1_sent": true,
     "total_entities": 1817,
     "total_bookings": 458904,
-    "total_revenue_lakhs": 18578.06
+    "total_revenue_lakhs": 18578.06,
+    "drive_upload_success": false,
+    "drive_file_url": "",
+    "sheets_push_results": {
+        "2025": "SUCCESS",
+        "2026": "SUCCESS"
+    },
+    "sheets_pushed": true
 }
