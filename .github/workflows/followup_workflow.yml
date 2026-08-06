@@ -42,6 +42,7 @@ jobs:
 
     permissions:
       contents: write
+      actions: write
 
     steps:
 
