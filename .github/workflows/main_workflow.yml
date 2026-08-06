@@ -21,7 +21,8 @@ jobs:
 
     permissions:
       contents: write
-
+      actions: write
+  
     steps:
       # ── Step 1: Checkout Repository ──────────────────────
       - name: 📥 Checkout Repository
