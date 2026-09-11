@@ -273,7 +273,7 @@ jobs:
         with:
           name: combined-data-latest
           path: artifact_stage/combined_data.parquet
-          retention-days: 90
+          retention-days: 15
           if-no-files-found: error
 
       # ── Step 13: Delete Old Artifacts (NEW - Auto Cleanup)
