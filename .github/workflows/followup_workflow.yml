@@ -136,14 +136,108 @@ jobs:
           echo "============================================"
           python scripts/update_master.py
 
+      # ── Step 5b: Download Complete Data Artifact ──────────
+      # The parquet no longer lives in git — it travels as the
+      # `combined-data-latest` artifact published by the Main
+      # Workflow. Download and restore it to the state path
+      # so reprocess_combined.py finds it.
+      - name: 📥 Download Complete Data Artifact
+        if: steps.check_state.outputs.needs_email2 == 'true'
+        id: download_data
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const ARTIFACT_NAME = 'combined-data-latest';
+
+            const { data } = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+              name: ARTIFACT_NAME,
+            });
+
+            if (!data.artifacts || data.artifacts.length === 0) {
+              core.setOutput('found', 'false');
+              core.warning(
+                `Artifact '${ARTIFACT_NAME}' not found (expired or not uploaded yet). ` +
+                `Will fall back to parquet in checkout if present.`
+              );
+              return;
+            }
+
+            const latest = data.artifacts.sort(
+              (a, b) => new Date(b.created_at) - new Date(a.created_at)
+            )[0];
+
+            console.log(
+              `Found artifact: id=${latest.id} size=${latest.size_in_bytes} ` +
+              `run=${latest.workflow_run ? latest.workflow_run.id : '?'} ` +
+              `expires=${latest.expires_on}`
+            );
+
+            const zip = await github.rest.actions.downloadArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: latest.id,
+              archive_format: 'zip',
+            });
+
+            fs.mkdirSync('_dl', { recursive: true });
+            fs.writeFileSync('_dl/combined_data.parquet', Buffer.from(zip.data));
+            core.setOutput('found', 'true');
+
+      # ── Step 5c: Restore Parquet to State Path ────────────
+      - name: 🔧 Restore Parquet to State Path
+        if: steps.check_state.outputs.needs_email2 == 'true'
+        run: |
+          python - <<'EOF'
+          import json, os, shutil
+
+          with open("reports/.run_state.json") as f:
+              state = json.load(f)
+
+          target = state.get("parquet_file_path", "")
+          if not target:
+              raise SystemExit("❌ parquet_file_path missing from state.")
+
+          # Resolve old-runner absolute paths to this checkout
+          if os.path.isabs(target) and not os.path.exists(target):
+              for marker in ("reports/", "reports" + os.sep):
+                  idx = target.find(marker)
+                  if idx != -1:
+                      target = os.path.join(os.getcwd(), target[idx:])
+                      break
+
+          src = "_dl/combined_data.parquet"
+
+          if os.path.exists(src):
+              os.makedirs(os.path.dirname(target), exist_ok=True)
+              shutil.copyfile(src, target)
+              size_mb = os.path.getsize(target) / 1048576
+              print(f"✅ Restored parquet from artifact → {target} ({size_mb:.1f} MB)")
+          elif os.path.exists(target):
+              size_mb = os.path.getsize(target) / 1048576
+              print(
+                  f"ℹ️  No artifact download — using parquet already in "
+                  f"checkout: {target} ({size_mb:.1f} MB)"
+              )
+          else:
+              raise SystemExit(
+                  "❌ No parquet available: artifact missing AND not in "
+                  "checkout.\n   Re-run the Main Workflow to republish data."
+              )
+          EOF
+
       # ── Step 6: Reprocess Invoice Data ────────────────────
-      # Uses committed combined file — no downloads needed
+      # Uses the combined parquet restored from the artifact
       - name: ⚙️ Reprocess Combined Invoice
         if: steps.check_state.outputs.needs_email2 == 'true'
         run: |
           echo "============================================"
           echo "  STEP 2: REPROCESSING COMBINED INVOICE"
-          echo "  Using committed combined invoice file"
+          echo "  Using combined parquet from artifact"
           echo "  No raw downloads needed"
           echo "============================================"
           python scripts/reprocess_combined.py
@@ -184,12 +278,20 @@ jobs:
           git config --global user.email \
             "github-actions[bot]@users.noreply.github.com"
 
+          # Parquet files are NOT committed to git anymore —
+          # they travel as the combined-data-latest artifact.
+          # Un-track any parquet committed by older versions.
+          TRACKED_PARQUET=$(git ls-files "reports/*combined_data_*.parquet" || true)
+          if [ -n "$TRACKED_PARQUET" ]; then
+            echo "🧹 Un-tracking previously committed parquet files:"
+            echo "$TRACKED_PARQUET"
+            echo "$TRACKED_PARQUET" | xargs -r git rm --cached -q
+          fi
+
           git add reports/.run_state.json        || true
           git add reports/.current_run_dir.txt   || true
           git add data/                          || true
 
-          find reports/ -name "combined_data_*.parquet" \
-            -exec git add {} \; 2>/dev/null || true
           find reports/ -name "CRD_Business_Report_*.xlsx" \
             -exec git add {} \; 2>/dev/null || true
           find reports/ -name "Final_Sample_Invoice_*.xlsx" \
@@ -200,65 +302,105 @@ jobs:
             exit 0
           fi
 
-          git stash
-          git pull origin HEAD --rebase
-          git stash pop || true
+          git pull origin HEAD --rebase --autostash
 
+          TRACKED_PARQUET=$(git ls-files "reports/*combined_data_*.parquet" || true)
+          if [ -n "$TRACKED_PARQUET" ]; then
+            echo "$TRACKED_PARQUET" | xargs -r git rm --cached -q
+          fi
           git add reports/.run_state.json        || true
           git add reports/.current_run_dir.txt   || true
           git add data/                          || true
-          find reports/ -name "combined_data_*.parquet" \
-            -exec git add {} \; 2>/dev/null || true
           find reports/ -name "CRD_Business_Report_*.xlsx" \
             -exec git add {} \; 2>/dev/null || true
           find reports/ -name "Final_Sample_Invoice_*.xlsx" \
             -exec git add {} \; 2>/dev/null || true
 
           if git diff --staged --quiet; then
-            echo "✅ No changes after restore."
+            echo "✅ No changes after rebase."
             exit 0
           fi
 
           RUN_DATE=$(date +'%d-%b-%Y %H:%M IST')
           git commit -m \
-            "✅ CRD Final Report + Sheets Push — ${RUN_DATE}"
+            "✅ CRD Final Report — ${RUN_DATE}"
           git push origin HEAD
           echo "✅ Committed and pushed."
 
-      # ── Step 10: Upload Artifacts ─────────────────────────
-      - name: 📤 Upload Artifacts
-        if: always()
+      # ── Step 10: Stage Reprocessed Parquet ────────────────
+      # Publish the CORRECTED parquet under the same fixed
+      # artifact name so the Sheets Workflow (which triggers
+      # after this one) picks up the re-mapped data.
+      - name: 🗂️ Stage Reprocessed Parquet
+        if: steps.check_state.outputs.needs_email2 == 'true'
+        run: |
+          python - <<'EOF'
+          import json, os, shutil
+
+          with open("reports/.run_state.json") as f:
+              state = json.load(f)
+
+          src = state.get("parquet_file_path", "")
+          if not src:
+              raise SystemExit("❌ parquet_file_path missing from state.")
+
+          # Resolve old-runner absolute paths
+          if os.path.isabs(src) and not os.path.exists(src):
+              for marker in ("reports/", "reports" + os.sep):
+                  idx = src.find(marker)
+                  if idx != -1:
+                      src = os.path.join(os.getcwd(), src[idx:])
+                      break
+
+          if not os.path.exists(src):
+              raise SystemExit(f"❌ Parquet not found: {src}")
+
+          os.makedirs("artifact_stage", exist_ok=True)
+          for old in os.listdir("artifact_stage"):
+              os.remove(os.path.join("artifact_stage", old))
+
+          dst = os.path.join("artifact_stage", "combined_data.parquet")
+          shutil.copyfile(src, dst)
+          size_mb = os.path.getsize(dst) / 1048576
+          print(f"✅ Staged reprocessed parquet: {src}")
+          print(f"   → {dst} ({size_mb:.1f} MB)")
+          EOF
+
+      # ── Step 10b: Upload Complete Data Artifact ───────────
+      - name: 📤 Upload Complete Data Artifact
+        if: steps.check_state.outputs.needs_email2 == 'true'
+        id: upload_artifact
         uses: actions/upload-artifact@v4
         with:
-          name: >-
-            CRD-Final-Report-${{ github.run_number }}-${{ github.run_attempt }}
-          path: |
-            reports/**/*.xlsx
-            !reports/**/Combined_Invoice_*.xlsx
-            !reports/**/Sample_Invoice_*.xlsx
-            !reports/**/downloads/**
-            reports/.run_state.json
-          retention-days: 30
+          name: combined-data-latest
+          path: artifact_stage/combined_data.parquet
+          retention-days: 90
+          if-no-files-found: error
 
-       # NEW - Auto Cleanup
+       # NEW - Auto Cleanup (keeps the artifact just uploaded)
       - name: 🧹 Delete Old Artifacts
-        if: always()
+        if: steps.upload_artifact.outputs.artifact-id != ''
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const keepId = '${{ steps.upload_artifact.outputs.artifact-id }}';
             const { data } = await github.rest.actions.listArtifactsForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               per_page: 100,
             });
             for (const artifact of data.artifacts) {
+              if (keepId && String(artifact.id) === keepId) {
+                console.log(`Keeping current artifact: ${artifact.name} (${artifact.id})`);
+                continue;
+              }
               await github.rest.actions.deleteArtifact({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 artifact_id: artifact.id,
               });
-              console.log(`Deleted: ${artifact.name}`);
+              console.log(`Deleted: ${artifact.name} (${artifact.id})`);
             }
       # ── Step 11: Skip Notice ──────────────────────────────
       - name: ℹ️ Skip Notice
