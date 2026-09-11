@@ -1,9 +1,24 @@
 name: CRD Report — Sheets & Drive Push
 
+# ─────────────────────────────────────────────────────────────
+# SINGLE-FILE / STORAGE-BOUNDED VERSION
+#   • Triggers after Main Workflow (Email 1) AND Followup
+#     Workflow (Email 2)
+#   • Pushes CRD-only data (scripts/push_to_sheets.py)
+#   • Downloads the complete parquet from the
+#     `combined-data-latest` artifact (no big files in git)
+#   • README link points to that ONE artifact (parquet only,
+#     ~78MB, 90-day retention) — no ZIP, no CSV, no export
+#   • Storage guarantee: exactly ONE artifact alive at any
+#     time; big parquet never committed to git
+#   • Fails the job when any year fails to push
+# ─────────────────────────────────────────────────────────────
+
 on:
   workflow_run:
     workflows:
       - "CRD Report — Main Workflow (Email 1)"
+      - "CRD Report — Followup Workflow (Email 2)"
     types:
       - completed
 
@@ -78,12 +93,14 @@ jobs:
           has_not_found = state.get("has_not_found", False)
           sheets_pushed = state.get("sheets_pushed", False)
           email1_sent   = state.get("email1_sent",   False)
+          email2_sent   = state.get("email2_sent",   False)
 
           print(f"has_not_found : {has_not_found}")
           print(f"sheets_pushed : {sheets_pushed}")
           print(f"email1_sent   : {email1_sent}")
+          print(f"email2_sent   : {email2_sent}")
 
-          if email1_sent and \
+          if (email1_sent or email2_sent) and \
              not has_not_found and \
              not sheets_pushed:
               print("✅ Push required.")
@@ -99,7 +116,112 @@ jobs:
                   f.write("needs_push=false\n")
           EOF
 
-      # ── Step 5: Push to Google Sheets ─────────────────────
+      # ── Step 5: Download Complete Data Artifact ───────────
+      # Fetches the latest `combined-data-latest` artifact
+      # (single parquet, uploaded by Main/Followup workflow).
+      # Also outputs its UI URL + expiry for the README link.
+      - name: 📥 Download Complete Data Artifact
+        if: steps.check_state.outputs.needs_push == 'true'
+        id: download_data
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const ARTIFACT_NAME = 'combined-data-latest';
+
+            const { data } = await github.rest.actions.listArtifactsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+              name: ARTIFACT_NAME,
+            });
+
+            if (!data.artifacts || data.artifacts.length === 0) {
+              core.setOutput('found', 'false');
+              core.warning(
+                `Artifact '${ARTIFACT_NAME}' not found (expired or not uploaded yet). ` +
+                `Will fall back to parquet in checkout if present.`
+              );
+              return;
+            }
+
+            const latest = data.artifacts.sort(
+              (a, b) => new Date(b.created_at) - new Date(a.created_at)
+            )[0];
+
+            console.log(
+              `Found artifact: id=${latest.id} size=${latest.size_in_bytes} ` +
+              `run=${latest.workflow_run ? latest.workflow_run.id : '?'} ` +
+              `expires=${latest.expires_on}`
+            );
+
+            const zip = await github.rest.actions.downloadArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: latest.id,
+              archive_format: 'zip',
+            });
+
+            fs.mkdirSync('_dl', { recursive: true });
+            fs.writeFileSync('_dl/combined_data.parquet', Buffer.from(zip.data));
+
+            core.setOutput('found', 'true');
+            core.setOutput('artifact_id', String(latest.id));
+            core.setOutput('run_id',
+              String(latest.workflow_run ? latest.workflow_run.id : ''));
+            core.setOutput('artifact_url',
+              `https://github.com/${context.repo.owner}/${context.repo.repo}` +
+              `/actions/runs/${latest.workflow_run ? latest.workflow_run.id : ''}` +
+              `/artifacts/${latest.id}`);
+            core.setOutput('expires_on', latest.expires_on || '');
+
+      # ── Step 6: Restore Parquet to State Path ─────────────
+      - name: 🔧 Restore Parquet to State Path
+        if: steps.check_state.outputs.needs_push == 'true'
+        run: |
+          python - <<'EOF'
+          import json, os, shutil
+
+          with open("reports/.run_state.json") as f:
+              state = json.load(f)
+
+          target = state.get("parquet_file_path", "")
+          if not target:
+              raise SystemExit("❌ parquet_file_path missing from state.")
+
+          # Resolve old-runner absolute paths to this checkout
+          if os.path.isabs(target) and not os.path.exists(target):
+              for marker in ("reports/", "reports" + os.sep):
+                  idx = target.find(marker)
+                  if idx != -1:
+                      target = os.path.join(os.getcwd(), target[idx:])
+                      break
+
+          src = "_dl/combined_data.parquet"
+
+          if os.path.exists(src):
+              os.makedirs(os.path.dirname(target), exist_ok=True)
+              shutil.copyfile(src, target)
+              size_mb = os.path.getsize(target) / 1048576
+              print(f"✅ Restored parquet from artifact → {target} ({size_mb:.1f} MB)")
+          elif os.path.exists(target):
+              size_mb = os.path.getsize(target) / 1048576
+              print(
+                  f"ℹ️  No artifact download — using parquet already in "
+                  f"checkout: {target} ({size_mb:.1f} MB)"
+              )
+          else:
+              raise SystemExit(
+                  "❌ No parquet available: artifact missing AND not in "
+                  "checkout.\n   Re-run the Main Workflow to republish data."
+              )
+          EOF
+
+      # ── Step 7: Push to Google Sheets (CRD only) ──────────
+      # If any year fails, push_to_sheets.py exits non-zero:
+      #   → job turns red, sheets_pushed stays False,
+      #     no README link written, next trigger retries
       - name: 📊 Push to Google Sheets
         if: steps.check_state.outputs.needs_push == 'true'
         timeout-minutes: 60
@@ -107,125 +229,149 @@ jobs:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
         run: |
           echo "============================================"
-          echo "  PUSHING TO GOOGLE SHEETS"
+          echo "  PUSHING CRD DATA TO GOOGLE SHEETS"
           echo "============================================"
           python scripts/push_to_sheets.py
 
-      # ── Step 6: Upload Parquet as Artifact ────────────────
-      - name: 📦 Upload Parquet as Artifact
-        if: steps.check_state.outputs.needs_push == 'true'
-        id: upload_artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: >-
-            Invoice-Data-${{ github.run_number }}-${{ github.run_attempt }}
-          path: |
-            reports/**/*.parquet
-          retention-days: 1
-
-      # NEW - Auto Cleanup
-      - name: 🧹 Delete Old Artifacts
-        if: always()
+      # ── Step 8: Delete Stray Artifacts ────────────────────
+      # Keeps `combined-data-latest` (the README download +
+      # cross-workflow transport). Deletes everything else so
+      # artifact storage can never accumulate.
+      - name: 🧹 Cleanup Stray Artifacts
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const KEEP = 'combined-data-latest';
             const { data } = await github.rest.actions.listArtifactsForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               per_page: 100,
             });
             for (const artifact of data.artifacts) {
+              if (artifact.name === KEEP) {
+                console.log(`Keeping: ${artifact.name} (${artifact.id})`);
+                continue;
+              }
               await github.rest.actions.deleteArtifact({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 artifact_id: artifact.id,
               });
-              console.log(`Deleted: ${artifact.name}`);
+              console.log(`Deleted: ${artifact.name} (${artifact.id})`);
             }
 
-      # ── Step 7: Save Artifact Link to README ─────────────
+      # ── Step 9: Save Artifact Link to README ──────────────
       - name: 📝 Save Artifact Link to README
         if: steps.check_state.outputs.needs_push == 'true'
         env:
-          ARTIFACT_URL: ${{ steps.upload_artifact.outputs.artifact-url }}
+          ARTIFACT_URL: ${{ steps.download_data.outputs.artifact_url }}
+          ARTIFACT_EXPIRES: ${{ steps.download_data.outputs.expires_on }}
         run: |
           python - <<'EOF'
           import os
           from datetime import datetime
 
-          repo_root    = os.getcwd()
-          readme_path  = os.path.join(repo_root, "README.md")
-          artifact_url = os.environ.get("ARTIFACT_URL", "")
-          now          = datetime.now()
-          timestamp    = now.strftime("%d-%b-%Y %H:%M IST")
-          date_str     = now.strftime("%d-%b-%Y")
+          artifact_url = os.environ.get("ARTIFACT_URL", "").strip()
 
-          # Build new entry
+          if not artifact_url:
+              print(
+                  "⚠️  No artifact URL available (transition run — "
+                  "artifact not published yet)."
+              )
+              print(
+                  "   README not updated. It will be updated after the "
+                  "next Main Workflow run."
+              )
+              raise SystemExit(0)
+
+          repo_root   = os.getcwd()
+          readme_path = os.path.join(repo_root, "README.md")
+          now         = datetime.now()
+          timestamp   = now.strftime("%d-%b-%Y %H:%M IST")
+
+          # Real expiry date from the artifact metadata
+          expires_str = "90 days"
+          raw_exp = os.environ.get("ARTIFACT_EXPIRES", "").strip()
+          if raw_exp:
+              try:
+                  exp_dt = datetime.strptime(
+                      raw_exp[:10], "%Y-%m-%d"
+                  )
+                  expires_str = exp_dt.strftime("%d-%b-%Y")
+              except Exception:
+                  pass
+
           new_entry = (
               f"| {timestamp} | "
               f"[Download]({artifact_url}) | "
-              f"90 days |"
+              f"{expires_str} |"
           )
 
-          # Check if README exists
           if os.path.exists(readme_path):
               with open(readme_path, "r") as f:
                   content = f.read()
           else:
               content = ""
 
-          # Check if download table exists
           TABLE_HEADER = "## 📦 Invoice Data Downloads"
           TABLE_COLUMNS = (
               "| Date & Time | Download Link | "
               "Expires |\n"
               "|---|---|---|"
           )
+          HOW_TO_NOTE = (
+              "\n> **The download is `combined_data.parquet`** — the complete "
+              "raw + processed dataset (single file, smallest size). "
+              "To convert to Excel:\n"
+              ">\n"
+              "> ```python\n"
+              "> import pandas as pd\n"
+              "> df = pd.read_parquet('combined_data.parquet')\n"
+              "> df.to_excel('Invoice_Data.xlsx', index=False)\n"
+              "> ```\n"
+              ">\n"
+              "> Note: Excel supports max 1,048,576 rows per sheet — for "
+              "larger data use pandas directly."
+          )
 
           if TABLE_HEADER not in content:
-              # Add table at the end of README
               content += (
                   f"\n\n---\n\n"
                   f"{TABLE_HEADER}\n\n"
                   f"{TABLE_COLUMNS}\n"
                   f"{new_entry}\n"
+                  f"{HOW_TO_NOTE}\n"
               )
           else:
-              # Insert new entry after table header row
-              # Find the table columns line
               lines = content.split("\n")
               new_lines = []
               inserted = False
 
               for i, line in enumerate(lines):
                   new_lines.append(line)
-                  # Insert after |---|---|---| line
                   if not inserted and \
                      line.strip().startswith("|---"):
-                      # Check if previous line has
-                      # "Download Link"
                       if i > 0 and \
                          "Download Link" in lines[i-1]:
                           new_lines.append(new_entry)
                           inserted = True
 
               if not inserted:
-                  # Fallback — append at end
                   new_lines.append(new_entry)
 
               content = "\n".join(new_lines)
 
-          # Write updated README
           with open(readme_path, "w") as f:
               f.write(content)
 
           print(f"✅ Artifact link saved to README.md")
-          print(f"   Date : {timestamp}")
-          print(f"   URL  : {artifact_url}")
+          print(f"   Date    : {timestamp}")
+          print(f"   Expires : {expires_str}")
+          print(f"   URL     : {artifact_url}")
           EOF
 
-      # ── Step 8: Commit State + README ─────────────────────
+      # ── Step 10: Commit State + README ────────────────────
       - name: 💾 Commit State + README
         if: steps.check_state.outputs.needs_push == 'true'
         run: |
@@ -241,15 +387,13 @@ jobs:
             exit 0
           fi
 
-          git stash
-          git pull origin HEAD --rebase
-          git stash pop || true
+          git pull origin HEAD --rebase --autostash
 
           git add reports/.run_state.json || true
           git add README.md || true
 
           if git diff --staged --quiet; then
-            echo "✅ No changes after restore."
+            echo "✅ No changes after rebase."
             exit 0
           fi
 
@@ -258,7 +402,7 @@ jobs:
           git push origin HEAD
           echo "✅ Committed."
 
-      # ── Step 9: Skip Notice ───────────────────────────────
+      # ── Step 11: Skip Notice ───────────────────────────────
       - name: ℹ️ Skip Notice
         if: steps.check_state.outputs.needs_push == 'false'
         run: |
