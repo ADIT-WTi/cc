@@ -142,20 +142,32 @@ jobs:
 
 
       # ── Step 11: Commit Small Output Files Only ───────────
+      # NOTE: parquet files are NOT committed to git anymore.
+      # They travel between workflows as the
+      # `combined-data-latest` artifact (see Step 11b).
+      # This keeps git history small and avoids GitHub's
+      # 100MB per-file limit as data grows.
       - name: 💾 Commit Output Files
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email \
             "github-actions[bot]@users.noreply.github.com"
 
+          # Remove any parquet files that were committed by
+          # older versions of this workflow (one-time cleanup
+          # + safety net). Keeps them on disk for this run,
+          # but removes them from git tracking.
+          TRACKED_PARQUET=$(git ls-files "reports/*combined_data_*.parquet" || true)
+          if [ -n "$TRACKED_PARQUET" ]; then
+            echo "🧹 Un-tracking previously committed parquet files:"
+            echo "$TRACKED_PARQUET"
+            echo "$TRACKED_PARQUET" | xargs -r git rm --cached -q
+          fi
+
           # Stage small required files
           git add reports/.run_state.json        || true
           git add reports/.current_run_dir.txt   || true
           git add data/                          || true
-
-          # Parquet file (small compressed data ~5-10MB)
-          find reports/ -name "combined_data_*.parquet" \
-            -exec git add {} \; 2>/dev/null || true
 
           # Final report
           find reports/ -name "CRD_Business_Report_*.xlsx" \
@@ -176,16 +188,16 @@ jobs:
             exit 0
           fi
 
-          git stash
-          git pull origin HEAD --rebase
-          git stash pop || true
+          git pull origin HEAD --rebase --autostash
 
-          # Re-stage after restore
+          # Re-stage after rebase
+          TRACKED_PARQUET=$(git ls-files "reports/*combined_data_*.parquet" || true)
+          if [ -n "$TRACKED_PARQUET" ]; then
+            echo "$TRACKED_PARQUET" | xargs -r git rm --cached -q
+          fi
           git add reports/.run_state.json        || true
           git add reports/.current_run_dir.txt   || true
           git add data/                          || true
-          find reports/ -name "combined_data_*.parquet" \
-            -exec git add {} \; 2>/dev/null || true
           find reports/ -name "CRD_Business_Report_*.xlsx" \
             -exec git add {} \; 2>/dev/null || true
           find reports/ -name "Final_Sample_Invoice_*.xlsx" \
@@ -196,7 +208,7 @@ jobs:
             -exec git add {} \; 2>/dev/null || true
 
           if git diff --staged --quiet; then
-            echo "✅ No changes after restore."
+            echo "✅ No changes after rebase."
             exit 0
           fi
 
@@ -211,40 +223,85 @@ jobs:
           git push origin HEAD
           echo "✅ Files committed and pushed."
 
+      # ── Step 11b: Stage Complete Parquet for Upload ───────
+      # Copies the current run's parquet to a stable staging
+      # folder under a fixed file name, so the artifact has a
+      # predictable structure for the other workflows.
+      - name: 🗂️ Stage Complete Parquet
+        run: |
+          python - <<'EOF'
+          import json, os, shutil
+
+          with open("reports/.run_state.json") as f:
+              state = json.load(f)
+
+          src = state.get("parquet_file_path", "")
+          if not src:
+              raise SystemExit("❌ parquet_file_path missing from state.")
+
+          # Resolve old-runner absolute paths
+          if os.path.isabs(src) and not os.path.exists(src):
+              for marker in ("reports/", "reports" + os.sep):
+                  idx = src.find(marker)
+                  if idx != -1:
+                      src = os.path.join(os.getcwd(), src[idx:])
+                      break
+
+          if not os.path.exists(src):
+              raise SystemExit(f"❌ Parquet not found: {src}")
+
+          os.makedirs("artifact_stage", exist_ok=True)
+          for old in os.listdir("artifact_stage"):
+              os.remove(os.path.join("artifact_stage", old))
+
+          dst = os.path.join("artifact_stage", "combined_data.parquet")
+          shutil.copyfile(src, dst)
+          size_mb = os.path.getsize(dst) / 1048576
+          print(f"✅ Staged: {src}")
+          print(f"   → {dst} ({size_mb:.1f} MB)")
+          EOF
+
       
-      # ── Step 12: Upload Small Artifacts Only
-      - name: 📤 Upload Report Artifacts
-        if: always()
+      # ── Step 12: Upload Complete Data Artifact ─────────────
+      # THE single big-file channel: one parquet, fixed name.
+      # Consumed by the Followup Workflow (reprocess) and the
+      # Sheets Workflow (push + README download link).
+      # Reports/state stay in git — they are small.
+      - name: 📤 Upload Complete Data Artifact
+        id: upload_artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CRD-Report-${{ github.run_number }}
-          path: |
-            reports/**/*.xlsx
-            !reports/**/Combined_Invoice_*.xlsx
-            !reports/**/Sample_Invoice_*.xlsx
-            !reports/**/downloads/**
-            reports/.run_state.json
-          retention-days: 1        # ← CHANGED from 90 to 1
+          name: combined-data-latest
+          path: artifact_stage/combined_data.parquet
+          retention-days: 90
+          if-no-files-found: error
 
       # ── Step 13: Delete Old Artifacts (NEW - Auto Cleanup)
+      # Keeps ONLY the artifact just uploaded; deletes every
+      # other artifact (including the previous run's
+      # combined-data-latest) so storage can never accumulate.
+      # Only runs when the upload actually succeeded.
       - name: 🧹 Delete Old Artifacts
-        if: always()
+        if: steps.upload_artifact.outputs.artifact-id != ''
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const keepId = '${{ steps.upload_artifact.outputs.artifact-id }}';
             const { data } = await github.rest.actions.listArtifactsForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               per_page: 100,
             });
             for (const artifact of data.artifacts) {
-              if (artifact.id !== context.runId) {
-                await github.rest.actions.deleteArtifact({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  artifact_id: artifact.id,
-                });
-                console.log(`Deleted artifact: ${artifact.name} (${artifact.id})`);
+              if (keepId && String(artifact.id) === keepId) {
+                console.log(`Keeping current artifact: ${artifact.name} (${artifact.id})`);
+                continue;
               }
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+              console.log(`Deleted artifact: ${artifact.name} (${artifact.id})`);
             }
