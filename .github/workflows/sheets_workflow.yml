@@ -163,8 +163,12 @@ jobs:
               archive_format: 'zip',
             });
 
+            // NOTE: the API returns the artifact as a ZIP
+            // archive — save it as .zip, the next step
+            // extracts the parquet from it.
             fs.mkdirSync('_dl', { recursive: true });
-            fs.writeFileSync('_dl/combined_data.parquet', Buffer.from(zip.data));
+            fs.writeFileSync('_dl/artifact.zip', Buffer.from(zip.data));
+            console.log(`Saved artifact zip: ${Buffer.from(zip.data).length} bytes`);
 
             core.setOutput('found', 'true');
             core.setOutput('artifact_id', String(latest.id));
@@ -175,13 +179,17 @@ jobs:
               `/actions/runs/${latest.workflow_run ? latest.workflow_run.id : ''}` +
               `/artifacts/${latest.id}`);
             core.setOutput('expires_on', latest.expires_on || '');
+            core.setOutput('created_at', latest.created_at || '');
 
       # ── Step 6: Restore Parquet to State Path ─────────────
+      # The downloaded artifact is a ZIP archive containing
+      # combined_data.parquet — extract it and copy to the
+      # exact path recorded in the state file.
       - name: 🔧 Restore Parquet to State Path
         if: steps.check_state.outputs.needs_push == 'true'
         run: |
           python - <<'EOF'
-          import json, os, shutil
+          import json, os, shutil, zipfile
 
           with open("reports/.run_state.json") as f:
               state = json.load(f)
@@ -198,13 +206,34 @@ jobs:
                       target = os.path.join(os.getcwd(), target[idx:])
                       break
 
-          src = "_dl/combined_data.parquet"
+          zip_path = "_dl/artifact.zip"
+          src      = "_dl/combined_data.parquet"
+
+          # Extract parquet from the downloaded artifact ZIP
+          if os.path.exists(zip_path):
+              with zipfile.ZipFile(zip_path) as zf:
+                  members = zf.namelist()
+                  member = next(
+                      (m for m in members if m.endswith(".parquet")),
+                      None
+                  )
+                  if not member:
+                      raise SystemExit(
+                          f"❌ No .parquet inside artifact zip. "
+                          f"Contents: {members}"
+                      )
+                  zf.extract(member, "_dl")
+                  src = os.path.join("_dl", member)
+              print(
+                  f"📦 Extracted from artifact: {member} "
+                  f"({os.path.getsize(src) / 1048576:.1f} MB)"
+              )
 
           if os.path.exists(src):
               os.makedirs(os.path.dirname(target), exist_ok=True)
               shutil.copyfile(src, target)
               size_mb = os.path.getsize(target) / 1048576
-              print(f"✅ Restored parquet from artifact → {target} ({size_mb:.1f} MB)")
+              print(f"✅ Restored parquet → {target} ({size_mb:.1f} MB)")
           elif os.path.exists(target):
               size_mb = os.path.getsize(target) / 1048576
               print(
@@ -267,10 +296,11 @@ jobs:
         env:
           ARTIFACT_URL: ${{ steps.download_data.outputs.artifact_url }}
           ARTIFACT_EXPIRES: ${{ steps.download_data.outputs.expires_on }}
+          ARTIFACT_CREATED: ${{ steps.download_data.outputs.created_at }}
         run: |
           python - <<'EOF'
           import os
-          from datetime import datetime
+          from datetime import datetime, timedelta
 
           artifact_url = os.environ.get("ARTIFACT_URL", "").strip()
 
@@ -291,14 +321,27 @@ jobs:
           timestamp   = now.strftime("%d-%b-%Y %H:%M IST")
 
           # Real expiry date from the artifact metadata
+          # (expires_on can be null on some API responses —
+          # fall back to created_at + 90 days)
           expires_str = "90 days"
           raw_exp = os.environ.get("ARTIFACT_EXPIRES", "").strip()
-          if raw_exp:
+          raw_created = os.environ.get("ARTIFACT_CREATED", "").strip()
+          if raw_exp and raw_exp.lower() not in ("undefined", "null", ""):
               try:
                   exp_dt = datetime.strptime(
                       raw_exp[:10], "%Y-%m-%d"
                   )
                   expires_str = exp_dt.strftime("%d-%b-%Y")
+              except Exception:
+                  pass
+          elif raw_created and raw_created.lower() not in ("undefined", "null", ""):
+              try:
+                  created_dt = datetime.strptime(
+                      raw_created[:10], "%Y-%m-%d"
+                  )
+                  expires_str = (
+                      created_dt + timedelta(days=90)
+                  ).strftime("%d-%b-%Y")
               except Exception:
                   pass
 
