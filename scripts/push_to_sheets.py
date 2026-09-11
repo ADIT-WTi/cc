@@ -1,14 +1,17 @@
 # ============================================================
-#     GOOGLE SHEETS + DRIVE PUSHER - GITHUB ACTIONS VERSION
+#     GOOGLE SHEETS PUSHER - GITHUB ACTIONS VERSION (FIXED)
 # ============================================================
-# Fast version:
-#   • Reads directly from parquet (no Excel building)
-#   • Uploads parquet to Google Drive
-#   • Pushes only 12 required columns to Google Sheets
-#   • Batch writing to avoid API limits
+# Changes vs previous version:
+#   • Pushes ONLY CRD vertical rows (was: all verticals)
+#   • sheets_pushed = True ONLY when every year succeeds
+#   • Exits non-zero (fails the workflow step) if any
+#     year fails or has no sheet config  → no false "success",
+#     no dead README link, next trigger will retry
+#   • Reads directly from parquet, batch writing (unchanged)
 # ============================================================
 
 import os
+import sys
 import json
 import glob
 import pandas as pd
@@ -23,11 +26,11 @@ from googleapiclient.http import MediaFileUpload
 
 SHEET_CONFIG = {
     2025: {
-        "spreadsheet_id": "1YdEHvdbNM59cpmF_hOHS9jveQa3y-wgqZTNqkiETfHM",
+        "spreadsheet_id": "1CAOhOmdW1BXgaa8IDc5os8m3tXjHQ0pblPdoPnAGxDs",
         "sheet_name"    : "INVOICE 2025"
     },
     2026: {
-        "spreadsheet_id": "1uRCN5pGGJS1r7HLeu3V-viD8dCrR5GYVS05LO-kRNIg",
+        "spreadsheet_id": "1cOEVewBvnmaxt58oa4ZSD55r-r6dlzoqBq8Pp_nuU9g",
         "sheet_name"    : "INVOICE 2026"
     },
     # 2027: {
@@ -399,18 +402,53 @@ def push_to_sheet(sheets_service, spreadsheet_id,
 
 
 # ============================================================
+#                 DATA FILTERING (NEW — CRD ONLY)
+# ============================================================
+
+def prepare_clean_df(df):
+    """
+    Filter the processed dataset down to the rows that
+    belong in the Google Sheets:
+
+        1. Vertical == 'CRD'          (case/space safe)
+        2. Drop unmapped rows         (Not Found / blank)
+
+    Returns (clean_df, total, crd_count, clean_count).
+    """
+    total = len(df)
+
+    vertical = df['Vertical'].astype(str).str.strip().str.upper()
+    crd_df   = df[vertical == 'CRD'].copy()
+    crd_count = len(crd_df)
+
+    clean_mask = (
+        crd_df['Group Entity'].notna() &
+        crd_df['Vertical'].notna() &
+        (~crd_df['Group Entity'].astype(str).isin(
+            ['Not Found', '', 'nan', 'None']
+        )) &
+        (~crd_df['Vertical'].astype(str).isin(
+            ['Not Found', '', 'nan', 'None']
+        ))
+    )
+    clean_df = crd_df[clean_mask].copy().reset_index(drop=True)
+
+    return clean_df, total, crd_count, len(clean_df)
+
+
+# ============================================================
 #                       MAIN FUNCTION
 # ============================================================
 
 def main():
     print("\n" + "=" * 65)
-    print("     📊 GOOGLE SHEETS + DRIVE PUSHER (CI/CD)")
+    print("     📊 GOOGLE SHEETS PUSHER (CI/CD)")
     print("=" * 65)
 
     run_date      = datetime.now()
     timestamp_str = run_date.strftime("%d%m%Y_%H%M")
 
-    # ── Step 1: Read State ───────────────────────────────────
+    # ── Step 1: Read State ────────────────────────────────────
     print("\n[1/6] Reading state file...")
     state, state_path = read_state_file()
 
@@ -455,7 +493,7 @@ def main():
                 "\n      ❌ No data file found. "
                 "Cannot push to Sheets."
             )
-            return
+            sys.exit(1)
 
     # ── Step 2: Load Data ────────────────────────────────────
     print(f"\n[2/6] Loading data from: {data_source}")
@@ -469,21 +507,18 @@ def main():
             data_source, engine='openpyxl'
         )
 
-    print(f"      Total rows: {len(df):,}")
+    clean_df, total, crd_count, clean_count = \
+        prepare_clean_df(df)
 
-    # Remove Not Found rows
-    clean_mask = (
-        df['Group Entity'].notna() &
-        df['Vertical'].notna() &
-        (~df['Group Entity'].astype(str).isin(
-            ['Not Found', '', 'nan', 'None']
-        )) &
-        (~df['Vertical'].astype(str).isin(
-            ['Not Found', '', 'nan', 'None']
-        ))
-    )
-    clean_df = df[clean_mask].copy().reset_index(drop=True)
-    print(f"      Clean rows: {len(clean_df):,}")
+    print(f"      Total rows     : {total:,}")
+    print(f"      CRD rows       : {crd_count:,}")
+    print(f"      Pushable rows  : {clean_count:,} (CRD, mapped)")
+
+    if clean_count == 0:
+        print(
+            "\n      ❌ No CRD rows to push. Aborting."
+        )
+        sys.exit(1)
 
     # ── Step 3: Authenticate ─────────────────────────────────
     print("\n[3/6] Authenticating Google APIs...")
@@ -502,11 +537,9 @@ def main():
         "      Files available via "
         "GitHub Actions Artifacts."
     )
-    drive_ok  = False
-    drive_url = ""
 
-    # ── Step 5: Push to Google Sheets ────────────────────────
-    print("\n[5/6] Pushing to Google Sheets...")
+    # ── Step 5: Push to Google Sheets (CRD only) ─────────────
+    print("\n[5/6] Pushing CRD data to Google Sheets...")
 
     # Split by calendar year
     clean_df['_report_date'] = pd.to_datetime(
@@ -531,8 +564,8 @@ def main():
 
         if year not in SHEET_CONFIG:
             print(
-                f"      ⚠️  No config for {year}. "
-                f"Add to SHEET_CONFIG."
+                f"      ❌ No sheet config for {year}. "
+                f"Add it to SHEET_CONFIG in push_to_sheets.py."
             )
             push_results[year] = "NO_CONFIG"
             continue
@@ -558,9 +591,54 @@ def main():
             print(f"      ❌ Failed: {e}")
             push_results[year] = f"FAILED: {e}"
 
-    # ── Step 6: Update State + Cleanup ───────────────────────
-    print("\n[6/6] Updating state + cleanup...")
+    # ── Step 6: Evaluate results ─────────────────────────────
+    print("\n[6/6] Evaluating results...")
 
+    failed_years = {
+        yr: res
+        for yr, res in push_results.items()
+        if res != "SUCCESS"
+    }
+
+    print("\n" + "=" * 65)
+    print("        📊 SHEETS PUSH SUMMARY")
+    print("=" * 65)
+    for yr, result in push_results.items():
+        icon = "✅" if result == "SUCCESS" else "❌"
+        print(f"    {icon} {yr} : {result}")
+    print("=" * 65)
+
+    # ── HARD FAIL if anything did not push ───────────────────
+    # sheets_pushed stays False, state is NOT committed,
+    # README link is NOT written, workflow shows red,
+    # and the next trigger retries the push.
+    if not push_results or failed_years:
+        print(
+            "\n❌ Sheets push INCOMPLETE — "
+            f"{len(failed_years)} year(s) failed "
+            "or missing config."
+        )
+        print(
+            "   sheets_pushed NOT set. "
+            "Fix the issue and re-run."
+        )
+        if any(
+            res == "NO_CONFIG"
+            for res in failed_years.values()
+        ):
+            print(
+                "   ⚠️  A calendar year has no target "
+                "spreadsheet in SHEET_CONFIG — add the "
+                "new year's spreadsheet ID."
+            )
+        print(
+            "   💡 If this is a 403 permission error: share "
+            "the spreadsheet(s) with the service account "
+            "email (Editor role)."
+        )
+        sys.exit(1)
+
+    # ── Success: cleanup + state update ──────────────────────
     # Cleanup old intermediate files
     for pattern in [
         "Combined_Invoice_*.xlsx",
@@ -575,26 +653,15 @@ def main():
             )
 
     update_state_file(state_path, {
-        "drive_upload_success" : drive_ok,
-        "drive_file_url"       : drive_url,
-        "sheets_push_results"  : push_results,
-        "sheets_pushed"        : True
+        "sheets_push_results": push_results,
+        "sheets_pushed"      : True,
+        "sheets_push_time"   : run_date.strftime(
+            "%d-%b-%Y %H:%M"
+        )
     })
 
-    # ── Summary ───────────────────────────────────────────────
     print("\n" + "=" * 65)
-    print("        ✅ SHEETS + DRIVE PUSH COMPLETE")
-    print("=" * 65)
-    print(
-        f"  Drive Upload : "
-        f"{'✅ Success' if drive_ok else '❌ Failed'}"
-    )
-    if drive_url:
-        print(f"  Drive URL    : {drive_url}")
-    print(f"\n  Sheets Results:")
-    for yr, result in push_results.items():
-        icon = "✅" if result == "SUCCESS" else "❌"
-        print(f"    {icon} {yr} : {result}")
+    print("        ✅ SHEETS PUSH COMPLETE — ALL YEARS OK")
     print("=" * 65)
 
 
