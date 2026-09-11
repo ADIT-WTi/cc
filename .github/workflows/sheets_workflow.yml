@@ -322,8 +322,8 @@ jobs:
 
           # Real expiry date from the artifact metadata
           # (expires_on can be null on some API responses —
-          # fall back to created_at + 90 days)
-          expires_str = "90 days"
+          # fall back to created_at + 15 days)
+          expires_str = "15 days"
           raw_exp = os.environ.get("ARTIFACT_EXPIRES", "").strip()
           raw_created = os.environ.get("ARTIFACT_CREATED", "").strip()
           if raw_exp and raw_exp.lower() not in ("undefined", "null", ""):
@@ -340,7 +340,7 @@ jobs:
                       raw_created[:10], "%Y-%m-%d"
                   )
                   expires_str = (
-                      created_dt + timedelta(days=90)
+                      created_dt + timedelta(days=15)
                   ).strftime("%d-%b-%Y")
               except Exception:
                   pass
