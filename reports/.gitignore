@@ -11,3 +11,6 @@ downloads/
 !not_found_data.json
 !.run_state.json
 !.current_run_dir.txt
+
+# In reports/.gitignore (or root .gitignore)
+combined_data_*.parquet
