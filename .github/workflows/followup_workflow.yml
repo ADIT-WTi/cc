@@ -184,16 +184,23 @@ jobs:
               archive_format: 'zip',
             });
 
+            // NOTE: the API returns the artifact as a ZIP
+            // archive — save it as .zip, the next step
+            // extracts the parquet from it.
             fs.mkdirSync('_dl', { recursive: true });
-            fs.writeFileSync('_dl/combined_data.parquet', Buffer.from(zip.data));
+            fs.writeFileSync('_dl/artifact.zip', Buffer.from(zip.data));
+            console.log(`Saved artifact zip: ${Buffer.from(zip.data).length} bytes`);
             core.setOutput('found', 'true');
 
       # ── Step 5c: Restore Parquet to State Path ────────────
+      # The downloaded artifact is a ZIP archive containing
+      # combined_data.parquet — extract it and copy to the
+      # exact path recorded in the state file.
       - name: 🔧 Restore Parquet to State Path
         if: steps.check_state.outputs.needs_email2 == 'true'
         run: |
           python - <<'EOF'
-          import json, os, shutil
+          import json, os, shutil, zipfile
 
           with open("reports/.run_state.json") as f:
               state = json.load(f)
@@ -210,13 +217,34 @@ jobs:
                       target = os.path.join(os.getcwd(), target[idx:])
                       break
 
-          src = "_dl/combined_data.parquet"
+          zip_path = "_dl/artifact.zip"
+          src      = "_dl/combined_data.parquet"
+
+          # Extract parquet from the downloaded artifact ZIP
+          if os.path.exists(zip_path):
+              with zipfile.ZipFile(zip_path) as zf:
+                  members = zf.namelist()
+                  member = next(
+                      (m for m in members if m.endswith(".parquet")),
+                      None
+                  )
+                  if not member:
+                      raise SystemExit(
+                          f"❌ No .parquet inside artifact zip. "
+                          f"Contents: {members}"
+                      )
+                  zf.extract(member, "_dl")
+                  src = os.path.join("_dl", member)
+              print(
+                  f"📦 Extracted from artifact: {member} "
+                  f"({os.path.getsize(src) / 1048576:.1f} MB)"
+              )
 
           if os.path.exists(src):
               os.makedirs(os.path.dirname(target), exist_ok=True)
               shutil.copyfile(src, target)
               size_mb = os.path.getsize(target) / 1048576
-              print(f"✅ Restored parquet from artifact → {target} ({size_mb:.1f} MB)")
+              print(f"✅ Restored parquet → {target} ({size_mb:.1f} MB)")
           elif os.path.exists(target):
               size_mb = os.path.getsize(target) / 1048576
               print(
